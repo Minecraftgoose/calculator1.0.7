@@ -1,0 +1,742 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>小鹅计算器</title>
+    <meta name="theme-color" content="#000000">
+
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+	<link rel="manifest" href="manifest.json">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        :root {
+            --bg: #000;
+            --btn: #333;
+            --btn-gray: #a5a5a5;
+            --btn-purple: #9c27b0;
+            --text: #fff;
+            --text-dark: #000;
+        }
+
+        .light { --bg: #f0f0f0; --btn: #e0e0e0; --btn-gray: #d4d4d4; --btn-purple: #b39ddb; --text: #000; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .nav {
+            position: fixed;
+            top: max(10px, env(safe-area-inset-top));
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90vw;
+            max-width: 600px;
+            height: 45px;
+            background: rgba(128,128,128,0.2);
+            backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .nav button {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: var(--text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calc {
+            width: 90vw;
+            max-width: 600px;
+            height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 10px);
+            max-height: 90vh;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            border-radius: 24px;
+            margin-top: max(50px, env(safe-area-inset-top) + 10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .display {
+            flex: 1;
+            padding: 3vh 5vw 2vh;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            color: var(--text);
+        }
+
+        .history {
+            font-size: 1.6rem;
+            opacity: 0.7;
+            min-height: 2.5rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .current {
+            font-size: 3.8rem;
+            font-weight: 300;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: font-size 0.1s;
+        }
+
+        .current.s { font-size: 3rem; }
+        .current.xs { font-size: 2.5rem; }
+        .current.xxs { font-size: 2rem; }
+        .current.xxxs { font-size: 1.7rem; }
+
+        .btns {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2vw;
+            padding: 2vw 5vw 4vw;
+            flex: 1.5;
+        }
+
+        .btns button {
+            border: none;
+            border-radius: 12px;
+            font-size: 2rem;
+            cursor: pointer;
+            background: var(--btn);
+            color: var(--text);
+            font-weight: 500;
+            min-height: 48px;
+            transition: transform 0.05s, filter 0.05s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btns button:active {
+            transform: scale(0.95);
+            filter: brightness(1.2);
+        }
+
+        .btns .op { background: var(--btn-purple); }
+        .btns .eq { background: var(--btn-purple); }
+        .btns .ac { background: var(--btn-gray); color: var(--text-dark); }
+        .btns .sp { background: var(--btn-gray); color: var(--text-dark); }
+        .btns .zero { grid-column: span 2; }
+
+        .sci {
+            display: none;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2vw;
+            padding: 2vw 5vw 0;
+        }
+
+        /* 修复：科学计算按钮添加圆角 */
+        .sci button { 
+            background: #555; 
+            font-size: 1.5rem; 
+            border: none;
+            border-radius: 12px;
+            min-height: 48px;
+            color: var(--text);
+            cursor: pointer;
+            transition: transform 0.05s, filter 0.05s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sci button:active {
+            transform: scale(0.95);
+            filter: brightness(1.2);
+        }
+
+        @media (orientation: landscape) and (min-width: 901px) {
+            .calc { 
+                flex-direction: row; 
+                max-width: 1200px; 
+                max-height: 600px; 
+                position: absolute; 
+                top: 50%; 
+                left: 50%; 
+                transform: translate(-50%, -50%); 
+                margin: 0; 
+            }
+            .display { 
+                flex: 2; 
+                justify-content: center; 
+                border-radius: 20px 0 0 20px; 
+            }
+            .btns-container { 
+                flex: 1.5; 
+                display: flex; 
+                flex-direction: column; 
+            }
+            .sci { 
+                display: grid; 
+                padding: 15px; 
+                margin-top: 60px; /* 修复：为导航栏留出空间 */
+            }
+            .btns { 
+                flex: 1; 
+                padding: 8px 15px 15px; 
+                gap: 8px; 
+            }
+            /* 修复：横屏时隐藏导航栏避免遮挡 */
+            .nav {
+                display: none;
+            }
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: flex-end;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active { display: flex; }
+
+        .panel {
+            background: #1c1c1c;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 20px 20px 0 0;
+            padding: 30px 20px calc(20px + env(safe-area-inset-bottom));
+            color: #fff;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s;
+            /* 修复：隐藏滚动条但保持可滚动 */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .panel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .modal.active .panel { transform: translateY(0); }
+
+        .light .panel { background: #f9f9f9; color: #000; }
+
+        .panel h2 { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .panel h2 button { background: none; border: none; color: inherit; font-size: 1.5rem; cursor: pointer; }
+
+        .setting { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #333; }
+        .light .setting { border-color: #ddd; }
+        .setting > div { display: flex; flex-direction: column; }
+        .setting span { font-size: 0.9rem; opacity: 0.6; margin-top: 4px; }
+
+        /* 修复：改进开关按钮样式 - 完全修复错位问题 */
+        .toggle { 
+            position: relative; 
+            width: 50px; 
+            height: 26px; 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+        .toggle input { 
+            opacity: 0; 
+            width: 0; 
+            height: 0; 
+            position: absolute;
+            margin: 0;
+            padding: 0;
+        }
+        .toggle span { 
+            position: relative;
+            cursor: pointer;
+            width: 50px;
+            height: 26px;
+            background-color: #555; 
+            border-radius: 13px; 
+            transition: .3s;
+            display: block;
+        }
+        .toggle span:before { 
+            content: ""; 
+            position: absolute;
+            width: 20px; 
+            height: 20px; 
+            left: 3px; 
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: white; 
+            border-radius: 50%; 
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .toggle input:checked + span { 
+            background-color: var(--btn-purple); 
+        }
+        .toggle input:checked + span:before { 
+            transform: translateY(-50%) translateX(24px);
+        }
+        /* 修复：确保setting布局不会挤压toggle */
+        .setting {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #333;
+            gap: 15px;
+        }
+        .light .setting { border-color: #ddd; }
+        .setting > div {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+        }
+
+        select { background: #333; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; font-size: 1rem; }
+        .light select { background: #e0e0e0; color: #000; }
+
+        .donate-img { width: 140px; height: 140px; border-radius: 10px; cursor: pointer; border: 2px solid var(--btn-purple); margin-top: 10px; }
+
+        .donate-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
+        .donate-modal.active { display: flex; }
+        .donate-modal > div { background: #1c1c1c; padding: 30px; border-radius: 20px; text-align: center; position: relative; }
+        .light .donate-modal > div { background: #f9f9f9; }
+        .donate-modal img { width: 200px; height: 200px; border-radius: 10px; border: 3px solid var(--btn-purple); margin: 15px 0; }
+        .donate-modal button { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.1); border: none; color: inherit; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; }
+
+        .warn { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); color: #fff; z-index: 3000; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
+        .warn i { font-size: 3rem; margin-bottom: 20px; animation: rot 1.5s infinite ease-in-out; }
+        @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(90deg); } }
+
+        @media (max-height: 600px) and (orientation: landscape) and (max-width: 900px) {
+            .warn { display: flex !important; }
+            .calc, .nav, .modal, .donate-modal { display: none !important; }
+        }
+    </style>
+<base target="_blank">
+<base target="_blank">
+</head>
+<body>
+    <div class="warn"><i class="fas fa-mobile-alt"></i><h2>请将手机竖屏使用</h2><p>计算器在竖屏模式下体验更佳</p></div>
+
+    <div class="nav">
+        <button id="themeBtn" aria-label="主题"><i class="fas fa-moon"></i></button>
+        <button id="setBtn" aria-label="设置"><i class="fas fa-cog"></i></button>
+    </div>
+
+    <div class="calc" id="calc">
+        <div class="display">
+            <div class="history" id="hist"></div>
+            <div class="current" id="curr">0</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; flex: 1.5;">
+            <div class="sci" id="sci">
+                <button data-a="sin">sin</button>
+                <button data-a="cos">cos</button>
+                <button data-a="tan">tan</button>
+                <button data-a="cot">cot</button>
+            </div>
+
+            <div class="btns" id="btns">
+                <button class="ac" data-a="ac">AC</button>
+                <button class="sp" data-a="sign">±</button>
+                <button class="sp" data-a="pct">%</button>
+                <button class="op" data-a="op" data-o="/">÷</button>
+
+                <button data-a="n" data-v="7">7</button>
+                <button data-a="n" data-v="8">8</button>
+                <button data-a="n" data-v="9">9</button>
+                <button class="op" data-a="op" data-o="*">×</button>
+
+                <button data-a="n" data-v="4">4</button>
+                <button data-a="n" data-v="5">5</button>
+                <button data-a="n" data-v="6">6</button>
+                <button class="op" data-a="op" data-o="-">−</button>
+
+                <button data-a="n" data-v="1">1</button>
+                <button data-a="n" data-v="2">2</button>
+                <button data-a="n" data-v="3">3</button>
+                <button class="op" data-a="op" data-o="+">+</button>
+
+                <button class="zero" data-a="n" data-v="0">0</button>
+                <button data-a="dot">.</button>
+                <button class="eq" data-a="eq">=</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="panel">
+            <h2>设置 <button id="closeSet"><i class="fas fa-times"></i></button></h2>
+
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #888; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase;">显示设置</h3>
+
+                <div class="setting" title="开启后，大数字将使用千位分隔符（如1,000,000）显示，方便阅读">
+                    <div>数字分组显示<span>使用千位分隔符显示大数字</span></div>
+                    <label class="toggle"><input type="checkbox" id="group"><span></span></label>
+                </div>
+
+                <div class="setting" title="设置计算结果保留的小数位数，范围从0到6位">
+                    <div>小数位数<span>设置计算结果保留的小数位数</span></div>
+                    <select id="places">
+                        <option value="0">0位</option>
+                        <option value="1">1位</option>
+                        <option value="2" selected>2位</option>
+                        <option value="3">3位</option>
+                        <option value="4">4位</option>
+                        <option value="5">5位</option>
+                        <option value="6">6位</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #888; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase;">操作设置</h3>
+
+                <div class="setting" title="开启后，每次点击按钮手机会轻微振动，提供触觉反馈">
+                    <div>振动反馈<span>点击按钮时产生振动反馈</span></div>
+                    <label class="toggle"><input type="checkbox" id="vib"><span></span></label>
+                </div>
+            </div>
+
+            <div>
+                <h3 style="color: #888; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase;">关于</h3>
+
+                <div class="setting" style="border: none;">
+                    <div>版本信息<span>小鹅计算器 v1.0.7</span></div>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <div>打赏作者<span>支持开发者继续改进应用</span></div>
+                    <img src="donate.png" class="donate-img" id="donateImg" alt="打赏" loading="lazy">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="donate-modal" id="donateModal">
+        <div>
+            <button id="closeDon"><i class="fas fa-times"></i></button>
+            <h3>感谢您的支持！</h3>
+            <p style="opacity: 0.7; margin: 10px 0;">您的打赏将激励我继续改进应用</p>
+            <img src="donate.png" alt="打赏码" loading="lazy">
+            <p style="color: var(--btn-purple); font-weight: 500;">谢谢打赏</p>
+        </div>
+    </div>
+
+    <script>
+        // 极简状态管理 - 只有必要状态
+        const S = {
+            curr: '0',
+            prev: '',
+            op: null,
+            reset: false,
+            settings: { group: false, places: 2, vib: false }
+        };
+
+        // DOM缓存
+        const D = {
+            curr: document.getElementById('curr'),
+            hist: document.getElementById('hist'),
+            body: document.body,
+            calc: document.getElementById('calc'),
+            sci: document.getElementById('sci'),
+            btns: document.getElementById('btns'),
+            modal: document.getElementById('modal'),
+            donate: document.getElementById('donateModal')
+        };
+
+        // 振动 - 使用最简单的异步
+        const vib = () => S.settings.vib && navigator.vibrate && navigator.vibrate(30);
+
+        // 格式化数字 - 极简实现
+        const fmt = (n) => {
+            if (!S.settings.group || isNaN(n) || n === '错误') return n;
+            const num = parseFloat(n);
+            if (isNaN(num)) return n;
+            if (Number.isInteger(num)) return num.toLocaleString('zh-CN');
+            const [int, dec] = n.split('.');
+            return parseFloat(int).toLocaleString('zh-CN') + '.' + dec;
+        };
+
+        // 更新显示 - 直接操作，无防抖
+        const upd = () => {
+            // 截断
+            let val = S.curr;
+            const len = val.startsWith('-') ? val.length - 1 : val.length;
+            if (len > 15) val = val.substring(0, val.startsWith('-') ? 16 : 15);
+
+            D.curr.textContent = fmt(val).replace(/\*/g, '×').replace(/\//g, '÷');
+
+            // 字体调整 - 直接操作class
+            D.curr.className = 'current';
+            const effLen = val.replace(/,/g, '').length;
+            if (effLen > 12) D.curr.classList.add('xxxs');
+            else if (effLen > 9) D.curr.classList.add('xxs');
+            else if (effLen > 6) D.curr.classList.add('xs');
+            else if (effLen > 4) D.curr.classList.add('s');
+
+            // 历史
+            if (S.prev && S.op) {
+                let h = S.prev + ' ' + S.op.replace(/\*/g, '×').replace(/\//g, '÷');
+                D.hist.textContent = h.length > 20 ? h.slice(0, 20) + '...' : h;
+            } else {
+                D.hist.textContent = '';
+            }
+        };
+
+        // 计算 - 立即执行，无延迟
+        const calc = () => {
+            if (!S.op || S.reset) return;
+            const p = parseFloat(S.prev.replace(/,/g, ''));
+            const c = parseFloat(S.curr.replace(/,/g, ''));
+            if (isNaN(p) || isNaN(c)) return;
+
+            let r;
+            switch(S.op) {
+                case '+': r = p + c; break;
+                case '-': r = p - c; break;
+                case '*': r = p * c; break;
+                case '/': r = c === 0 ? '错误' : p / c; break;
+            }
+
+            if (typeof r === 'number') {
+                if (String(r).includes('e')) r = parseFloat(r.toPrecision(15));
+                r = parseFloat(r.toFixed(S.settings.places));
+            }
+            S.curr = String(r);
+            S.op = null;
+            S.prev = '';
+            S.reset = true;
+            upd();
+        };
+
+        // 科学计算
+        const sci = (f) => {
+            const n = parseFloat(S.curr);
+            if (isNaN(n)) return;
+            const rad = n * Math.PI / 180;
+            let r;
+            switch(f) {
+                case 'sin': r = Math.sin(rad); break;
+                case 'cos': r = Math.cos(rad); break;
+                case 'tan': r = Math.tan(rad); break;
+                case 'cot': 
+                    const t = Math.tan(rad);
+                    r = Math.abs(t) < 1e-10 ? '错误' : 1/t;
+                    break;
+            }
+            if (typeof r === 'number') {
+                if (String(r).includes('e')) r = parseFloat(r.toPrecision(15));
+                r = parseFloat(r.toFixed(S.settings.places));
+            }
+            S.curr = String(r);
+            S.reset = true;
+            upd();
+        };
+
+        // 事件处理 - 直接绑定，无委托
+        const handle = {
+            n: (v) => {
+                // 修复：防止重复输入零
+                if (v === '0' && S.curr === '0') return;
+
+                if (S.curr === '错误' || S.reset) { 
+                    S.curr = v; 
+                    S.reset = false; 
+                }
+                else if (S.curr === '0' && v !== '0') {
+                    // 修复：清零后输入非零数字时替换零
+                    S.curr = v;
+                }
+                else if (S.curr.replace(/,/g, '').length < 15) {
+                    S.curr += v;
+                }
+                upd();
+            },
+            op: (o) => {
+                calc();
+                S.prev = S.curr;
+                S.op = o;
+                S.reset = true;
+                upd();
+            },
+            dot: () => {
+                if (S.curr === '错误' || S.reset) { 
+                    S.curr = '0.'; 
+                    S.reset = false; 
+                }
+                else if (!S.curr.includes('.')) {
+                    S.curr += '.';
+                }
+                upd();
+            },
+            ac: () => {
+                S.curr = '0';
+                S.prev = '';
+                S.op = null;
+                S.reset = false;
+                upd();
+            },
+            sign: () => {
+                if (S.curr !== '0' && S.curr !== '错误') {
+                    S.curr = S.curr.startsWith('-') ? S.curr.slice(1) : '-' + S.curr;
+                    upd();
+                }
+            },
+            pct: () => {
+                const n = parseFloat(S.curr);
+                if (!isNaN(n)) { 
+                    S.curr = String(n/100); 
+                    upd(); 
+                }
+            },
+            eq: () => calc()
+        };
+
+        // 绑定按钮事件 - 使用onclick直接绑定
+        D.btns.querySelectorAll('button').forEach(btn => {
+            btn.onclick = () => {
+                vib();
+                const a = btn.dataset.a;
+                if (a === 'n') handle.n(btn.dataset.v);
+                else if (a === 'op') handle.op(btn.dataset.o);
+                else if (handle[a]) handle[a]();
+            };
+        });
+
+        D.sci.querySelectorAll('button').forEach(btn => {
+            btn.onclick = () => { vib(); sci(btn.dataset.a); };
+        });
+
+        // 主题
+        document.getElementById('themeBtn').onclick = () => {
+            vib();
+            const isL = D.body.classList.toggle('light');
+            localStorage.setItem('t', isL ? 'l' : 'd');
+            document.querySelector('#themeBtn i').className = isL ? 'fas fa-sun' : 'fas fa-moon';
+        };
+
+        // 设置面板
+        document.getElementById('setBtn').onclick = () => { 
+            vib(); 
+            D.modal.classList.add('active'); 
+        };
+        document.getElementById('closeSet').onclick = () => D.modal.classList.remove('active');
+        D.modal.onclick = (e) => { if (e.target === D.modal) D.modal.classList.remove('active'); };
+
+        // 设置项
+        document.getElementById('group').onchange = (e) => { 
+            S.settings.group = e.target.checked; 
+            save(); 
+            upd(); 
+        };
+        document.getElementById('places').onchange = (e) => { 
+            S.settings.places = parseInt(e.target.value); 
+            save(); 
+        };
+        document.getElementById('vib').onchange = (e) => { 
+            S.settings.vib = e.target.checked; 
+            save(); 
+        };
+
+        const save = () => localStorage.setItem('s', JSON.stringify(S.settings));
+
+        // 打赏
+        document.getElementById('donateImg').onclick = () => { 
+            vib(); 
+            D.donate.classList.add('active'); 
+        };
+        document.getElementById('closeDon').onclick = () => D.donate.classList.remove('active');
+        D.donate.onclick = (e) => { if (e.target === D.donate) D.donate.classList.remove('active'); };
+
+        // 初始化
+        const init = () => {
+            // 加载设置
+            const saved = localStorage.getItem('s');
+            if (saved) {
+                try { S.settings = JSON.parse(saved); } catch(e) {}
+            }
+            document.getElementById('group').checked = S.settings.group;
+            document.getElementById('places').value = S.settings.places;
+            document.getElementById('vib').checked = S.settings.vib;
+
+            // 加载主题
+            if (localStorage.getItem('t') === 'l') {
+                D.body.classList.add('light');
+                document.querySelector('#themeBtn i').className = 'fas fa-sun';
+            }
+
+            // 横屏检测 - 简单版
+            const check = () => {
+                const isL = window.innerWidth > window.innerHeight;
+                const isSmall = window.innerHeight <= 600 && window.innerWidth <= 900;
+                if (isL && isSmall) {
+                    document.querySelector('.warn').style.display = 'flex';
+                    D.calc.style.display = 'none';
+                    document.querySelector('.nav').style.display = 'none';
+                } else {
+                    document.querySelector('.warn').style.display = 'none';
+                    D.calc.style.display = 'flex';
+                    document.querySelector('.nav').style.display = 'flex';
+                    if (isL && window.innerWidth >= 901) {
+                        D.sci.style.display = 'grid';
+                    }
+                }
+            };
+
+            window.addEventListener('resize', check);
+            check();
+            upd();
+        };
+
+        // 阻止双击缩放
+        document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+        document.addEventListener('gesturestart', e => e.preventDefault());
+
+        init();
+    </script>
+</body>
+</html>
